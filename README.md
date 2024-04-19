@@ -11,6 +11,7 @@
 
 ## :star2: Changelog
 
+- **[2024.4.19]** Documenting nodes
 - **[2024.4.19]** Initial repo
 
 ## :books: Example workflows
@@ -68,20 +69,9 @@ ComfyUI/models/ella_encoder/
 ```
 
 
-## :book: Usage (:construction: Work in progress)
+## :book: Nodes reference
 
-#### Load ELLA Model
-
-#### Apply ELLA
-
-#### Load T5 TextEncoder #ELLA
-
-#### T5 Text Encode #ELLA
-
-#### ELLA Combine Embeds
-
-#### Convert Condition to ELLA Embeds
-
+[Nodes reference](./NODES.md)
 
 ## :memo: TODO
 
