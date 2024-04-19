@@ -11,6 +11,19 @@ ELLA_EMBEDS_TYPE = "ELLA_EMBEDS"
 ELLA_EMBEDS_PREFIX = "ella_"
 ELLA_EMBEDS_PREFIX_LEN = len(ELLA_EMBEDS_PREFIX)
 
+# set the models directory
+if "ella" not in folder_paths.folder_names_and_paths:
+    current_paths = [os.path.join(folder_paths.models_dir, "ella")]
+else:
+    current_paths, _ = folder_paths.folder_names_and_paths["ella"]
+folder_paths.folder_names_and_paths["ella"] = (current_paths, folder_paths.supported_pt_extensions)
+
+if "ella_encoder" not in folder_paths.folder_names_and_paths:
+    current_paths = [os.path.join(folder_paths.models_dir, "ella_encoder")]
+else:
+    current_paths, _ = folder_paths.folder_names_and_paths["ella_encoder"]
+folder_paths.folder_names_and_paths["ella_encoder"] = (current_paths, folder_paths.supported_pt_extensions)
+
 
 class EllaProxyUNet:
     def __init__(self, ella, model_sampling, positive, negative) -> None:
