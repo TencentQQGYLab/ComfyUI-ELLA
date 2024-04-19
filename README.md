@@ -49,7 +49,7 @@ Remember you can also use any custom location setting an `ella` & `ella_encoder`
 - `ComfyUI/models/ella`, create it if not present.
   - Place [ELLA Models](https://huggingface.co/QQGYLab/ELLA) here
 - `ComfyUI/models/ella_encoder`, create it if not present.
-  - Place [t5 model](https://huggingface.co/google/flan-t5-xl) here, it should be a folder of transfomers structure with config.json
+  - Place [FLAN-T5 XL Text Encoder](https://huggingface.co/QQGYLab/ELLA/tree/main/models--google--flan-t5-xl--text_encoder) here, it should be a folder of transfomers structure with config.json
 
 In summary, you should have the following model directory structure:
 
@@ -57,7 +57,6 @@ In summary, you should have the following model directory structure:
 ComfyUI/models/ella/
 └── ella-sd1.5-tsc-t5xl.safetensors
 
-# It may be a little different because I only include the text_encoder part here
 ComfyUI/models/ella_encoder/
 └── models--google--flan-t5-xl
     ├── config.json
