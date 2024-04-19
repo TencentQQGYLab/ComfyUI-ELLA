@@ -58,7 +58,7 @@ ComfyUI/models/ella/
 └── ella-sd1.5-tsc-t5xl.safetensors
 
 ComfyUI/models/ella_encoder/
-└── models--google--flan-t5-xl
+└── models--google--flan-t5-xl--text_encoder
     ├── config.json
     ├── model.safetensors
     ├── special_tokens_map.json
