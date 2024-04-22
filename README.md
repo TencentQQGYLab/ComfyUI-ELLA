@@ -79,6 +79,10 @@ ComfyUI/models/ella_encoder/
 
 [Nodes reference](./NODES.md)
 
+## :mag: Common promblem
+
+- XXX not implemented for 'Half'. See [issue #12](https://github.com/TencentQQGYLab/ComfyUI-ELLA/issues/12#issuecomment-2067994702)
+
 ## :memo: TODO
 
 - [ ] Support prompt weighting
