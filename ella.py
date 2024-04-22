@@ -1,8 +1,10 @@
 import os
+from typing import Dict
 
 import folder_paths
 import torch
 from comfy import model_management
+from comfy.conds import CONDCrossAttn
 from safetensors.torch import load_model
 
 from .model import ELLA, T5TextEmbedder
@@ -37,7 +39,8 @@ class EllaProxyUNet:
         self.ella.to(self.dtype)
         for i in range(len(self.embeds)):
             for k in self.embeds[i]:
-                self.embeds[i][k].to(device=self.load_device, dtype=self.dtype)
+                self.embeds[i][k].to(dtype=self.dtype)
+                self.embeds[i][k] = CONDCrossAttn(self.embeds[i][k])
 
     @property
     def load_device(self):
@@ -47,10 +50,13 @@ class EllaProxyUNet:
     def offload_device(self):
         return model_management.text_encoder_offload_device()
 
+    def process_cond(self, embeds: Dict[str, CONDCrossAttn], batch_size, **kwargs):
+        return {k: v.process_cond(batch_size, self.load_device, **kwargs).cond for k, v in embeds.items()}
+
     def prepare_conds(self):
         self.ella.to(self.load_device)
-        cond = self.ella(torch.Tensor([999]).to(torch.int64), **self.embeds[0])
-        uncond = self.ella(torch.Tensor([999]).to(torch.int64), **self.embeds[1])
+        cond = self.ella(torch.Tensor([999]).to(torch.int64), **self.process_cond(self.embeds[0], 1))
+        uncond = self.ella(torch.Tensor([999]).to(torch.int64), **self.process_cond(self.embeds[1], 1))
         self.ella.to(self.offload_device)
         return cond, uncond
 
@@ -65,8 +71,8 @@ class EllaProxyUNet:
         self.ella.to(device=self.load_device)
         for i in cond_or_uncond:
             h = self.ella(
-                self.model_sampling.timestep(timestep_[i]),
-                **self.embeds[i],
+                self.model_sampling.timestep(timestep_[0]),
+                **self.process_cond(self.embeds[i], input_x.size(0) // len(cond_or_uncond)),
             )
             time_aware_encoder_hidden_states.append(h)
         self.ella.to(self.offload_device)

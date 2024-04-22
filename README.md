@@ -11,6 +11,7 @@
 
 ## :star2: Changelog
 
+- **[2024.4.22]** Fix unstable quality of image while multi-batch.
 - **[2024.4.19]** Documenting nodes
 - **[2024.4.19]** Initial repo
 
