@@ -11,6 +11,7 @@
 
 ## :star2: Changelog
 
+- **[2024.4.22]** Fix unstable quality of image while multi-batch. Add CLIP concat (support lora trigger words now).
 - **[2024.4.19]** Documenting nodes
 - **[2024.4.19]** Initial repo
 
@@ -20,9 +21,15 @@ The [examples directory](./examples/) has workflow examples. You can directly lo
 
 ![workflow_example](./examples/workflow_example.png)
 
-:tada: It works with controlnet! And [EMMA](https://github.com/TencentQQGYLab/ELLA/issues/15) is working in progress.
+:tada: It works with controlnet! 
 
 ![controlnet_workflow_example](./examples/controlnet_workflow_example.png)
+
+:tada: It works with **lora trigger words** by concat CLIP CONDITION!
+
+![lora_workflow_example](./examples/concat_clip_with_lora_workflow_example.png)
+
+And [EMMA](https://github.com/TencentQQGYLab/ELLA/issues/15) is working in progress.
 
 ## :green_book: Install
 
@@ -71,6 +78,10 @@ ComfyUI/models/ella_encoder/
 ## :book: Nodes reference
 
 [Nodes reference](./NODES.md)
+
+## :mag: Common promblem
+
+- XXX not implemented for 'Half'. See [issue #12](https://github.com/TencentQQGYLab/ComfyUI-ELLA/issues/12#issuecomment-2067994702)
 
 ## :memo: TODO
 
