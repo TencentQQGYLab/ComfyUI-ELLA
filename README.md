@@ -11,9 +11,16 @@
 
 ## :star2: Changelog
 
+- **[2024.4.24]** Upgraded ELLA Apply method. Better compatibility with the comfyui ecosystem. Refer to the method mentioned in [ComfyUI_ELLA PR #25](https://github.com/ExponentialML/ComfyUI_ELLA/pull/25)
+  - **DEPRECATED**: `Apply ELLA` without `simgas` is deprecated and it will be removed in a future version.
 - **[2024.4.22]** Fix unstable quality of image while multi-batch. Add CLIP concat (support lora trigger words now).
-- **[2024.4.19]** Documenting nodes
-- **[2024.4.19]** Initial repo
+- **[2024.4.19]** Documenting nodes.
+- **[2024.4.19]** Initial repo.
+
+## :pushpin: Notice
+
+- SIGMAS from node `BasicScheduler` or TIMESTEPS by node `Set ELLA Timesteps` must be the same as the KSampler settings. Because [Timestep-Aware Semantic Connector (TSC)](https://arxiv.org/html/2403.05135v1#S3), which dynamically adapts semantics features over sampling time steps, has been introduced.
+- If you need concat clip `CONDITIONING` to make LoRA trigger words effective, ELLA output `CONDITIONING` **always** needs to be linked to the `conditioning_to` of `Conditioning (Concat)` node.
 
 ## :books: Example workflows
 
@@ -21,13 +28,29 @@ The [examples directory](./examples/) has workflow examples. You can directly lo
 
 ![workflow_example](./examples/workflow_example.png)
 
+All legacy workflows was compatible. But it is deprecated and will be removed in a future version.
+
+![workflow_example_legacy](./examples/workflow_example_legacy.png)
+
 :tada: It works with controlnet! 
 
-![controlnet_workflow_example](./examples/controlnet_workflow_example.png)
+![workflow_controlnet](./examples/workflow_controlnet.png)
 
-:tada: It works with **lora trigger words** by concat CLIP CONDITION!
+:tada: It works with **lora trigger words** by concat CLIP CONDITIONING!
 
-![lora_workflow_example](./examples/concat_clip_with_lora_workflow_example.png)
+:warning: NOTE again that `ELLA CONDITIONING` always needs to be linked to the `conditioning_to` of `Conditioning (Concat)` node.
+
+![workflow_lora](./examples/workflow_lora.png)
+
+With the upgrade(2024.4.24), some interesting workflow can be implemented, such as using ELLA only in positive. As shown below:
+
+![workflow_lora_positive_ella_only](./examples/workflow_lora_positive_ella_only.png)
+
+| positive + negative | positive only |
+| :---: | :---: |
+| ![ella_with_lora](./assets/ella_with_lora.png) | ![ella_with_lora_positive_only](./assets/ella_with_lora_positive_only.png) |
+
+However, there is no guarantee that positive-only will bring better results.
 
 And [EMMA](https://github.com/TencentQQGYLab/ELLA/issues/15) is working in progress.
 
@@ -86,6 +109,17 @@ ComfyUI/models/ella_encoder/
 ## :memo: TODO
 
 - [ ] Support prompt weighting
+
+## :hugs: Contributors (direct & indirect)
+
+<table>
+<tr>
+   <td align="center"><a href="https://github.com/JettHu"><img src="https://avatars.githubusercontent.com/u/35261585?s=460&amp;v=4" width="32px;" alt=""/><br /><sub><b>JettHu</b></sub></a></td>
+   <td align="center"><a href="https://github.com/budui"><img src="https://avatars.githubusercontent.com/u/16448529?s=460&amp;v=4" width="32px;" alt=""/><br /><sub><b>budui</b></sub></a></td>
+   <td align="center"><a href="https://github.com/kijai"><img src="https://avatars.githubusercontent.com/u/40791699?s=460&amp;v=4" width="32px;" alt=""/><br /><sub><b>kijai</b></sub></a></td>
+   <td align="center"><a href="https://github.com/huagetai"><img src="https://avatars.githubusercontent.com/u/1137341?s=460&amp;v=4" width="32px;" alt=""/><br /><sub><b>huagetai</b></sub></a></td>
+</tr>
+</table>
 
 ## :yum: Thanks
 
