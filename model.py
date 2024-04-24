@@ -115,7 +115,7 @@ class PerceiverResampler(nn.Module):
 
 
 class T5TextEmbedder:
-    def __init__(self, pretrained_path="google/flan-t5-xl", max_length=None, dtype=None, legacy=False):
+    def __init__(self, pretrained_path="google/flan-t5-xl", max_length=None, dtype=None, legacy=True):
         self.load_device = model_management.text_encoder_device()
         self.offload_device = model_management.text_encoder_offload_device()
         self.dtype = dtype if dtype is not None else model_management.text_encoder_dtype(self.load_device)

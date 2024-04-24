@@ -14,8 +14,13 @@
 - **[2024.4.24]** Upgraded ELLA Apply method. Better compatibility with the comfyui ecosystem. Refer to the method mentioned in [ComfyUI_ELLA PR #25](https://github.com/ExponentialML/ComfyUI_ELLA/pull/25)
   - **DEPRECATED**: `Apply ELLA` without `simgas` is deprecated and it will be removed in a future version.
 - **[2024.4.22]** Fix unstable quality of image while multi-batch. Add CLIP concat (support lora trigger words now).
-- **[2024.4.19]** Documenting nodes
-- **[2024.4.19]** Initial repo
+- **[2024.4.19]** Documenting nodes.
+- **[2024.4.19]** Initial repo.
+
+## :pushpin: Notice
+
+- SIGMAS from node `BasicScheduler` or TIMESTEPS by node `Set ELLA Timesteps` must be the same as the KSampler settings. Because [Timestep-Aware Semantic Connector (TSC)](https://arxiv.org/html/2403.05135v1#S3), which dynamically adapts semantics features over sampling time steps, has been introduced.
+- If you need concat clip `CONDITIONING` to make LoRA trigger words effective, ELLA output `CONDITIONING` **always** needs to be linked to the `conditioning_to` of `Conditioning (Concat)` node.
 
 ## :books: Example workflows
 
@@ -31,9 +36,9 @@ All legacy workflows was compatible. But it is deprecated and will be removed in
 
 ![workflow_controlnet](./examples/workflow_controlnet.png)
 
-:tada: It works with **lora trigger words** by concat CLIP CONDITION!
+:tada: It works with **lora trigger words** by concat CLIP CONDITIONING!
 
-:warning: NOTE that `ELLA CONDITIONING` always needs to be linked to the `conditioning_to` of `Conditioning (Concat)` node.
+:warning: NOTE again that `ELLA CONDITIONING` always needs to be linked to the `conditioning_to` of `Conditioning (Concat)` node.
 
 ![workflow_lora](./examples/workflow_lora.png)
 
