@@ -3,6 +3,9 @@ from collections import OrderedDict
 from typing import Optional
 
 import torch
+from comfy import model_management
+from comfy.model_patcher import ModelPatcher
+from safetensors.torch import load_model
 from torch import nn
 
 from .activations import get_activation
@@ -111,17 +114,25 @@ class PerceiverResampler(nn.Module):
         return latents
 
 
-class T5TextEmbedder(nn.Module):
-    def __init__(self, pretrained_path="google/flan-t5-xl", max_length=None):
-        super().__init__()
-        # TODO: make it naive instead of transformers
+class T5TextEmbedder:
+    def __init__(self, pretrained_path="google/flan-t5-xl", max_length=None, dtype=None, legacy=False):
+        self.load_device = model_management.text_encoder_device()
+        self.offload_device = model_management.text_encoder_offload_device()
+        self.dtype = dtype if dtype is not None else model_management.text_encoder_dtype(self.load_device)
+        self.output_device = model_management.intermediate_device()
+        self.max_length = max_length
         from transformers import T5EncoderModel, T5Tokenizer
 
-        self.model = T5EncoderModel.from_pretrained(pretrained_path)
-        self.tokenizer = T5Tokenizer.from_pretrained(pretrained_path)
-        self.max_length = max_length
+        self.model = T5EncoderModel.from_pretrained(pretrained_path).to(self.dtype)  # type: ignore
+        self.tokenizer = T5Tokenizer.from_pretrained(pretrained_path, legacy=legacy)
+        self.patcher = ModelPatcher(self.model, load_device=self.load_device, offload_device=self.offload_device)
 
-    def forward(self, caption, text_input_ids=None, attention_mask=None, max_length=None, **kwargs):
+    def load_model(self):
+        model_management.load_model_gpu(self.patcher)
+        return self.patcher
+
+    def __call__(self, caption, text_input_ids=None, attention_mask=None, max_length=None, **kwargs):
+        self.load_model()
         if max_length is None:
             max_length = self.max_length
 
@@ -143,7 +154,7 @@ class T5TextEmbedder(nn.Module):
         attention_mask = attention_mask.to(self.model.device)  # type: ignore
         outputs = self.model(text_input_ids, attention_mask=attention_mask)  # type: ignore
 
-        return outputs.last_hidden_state
+        return outputs.last_hidden_state.to(self.output_device)
 
 
 class TimestepEmbedding(nn.Module):
@@ -251,7 +262,7 @@ class Timesteps(nn.Module):
         )
 
 
-class ELLA(nn.Module):
+class ELLAModel(nn.Module):
     def __init__(
         self,
         time_channel=320,
@@ -265,8 +276,6 @@ class ELLA(nn.Module):
         input_dim=2048,
     ):
         super().__init__()
-        # TODO: make it naive instead of diffusers.models.embeddings.[Timesteps, TimestepEmbedding]
-
         self.position = Timesteps(time_channel, flip_sin_to_cos=True, downscale_freq_shift=0)
         self.time_embedding = TimestepEmbedding(
             in_channels=time_channel,
@@ -294,3 +303,26 @@ class ELLA(nn.Module):
         time_embedding = self.time_embedding(ori_time_feature)
 
         return self.connector(t5_embeds, timestep_embedding=time_embedding)
+
+
+class ELLA:
+    def __init__(self, path: str, **kwargs) -> None:
+        self.load_device = model_management.text_encoder_device()
+        self.offload_device = model_management.text_encoder_offload_device()
+        self.dtype = model_management.text_encoder_dtype(self.load_device)
+        self.output_device = model_management.intermediate_device()
+        self.model = ELLAModel()
+        load_model(self.model, path, strict=True)
+        self.model.to(self.dtype)  # type: ignore
+        self.patcher = ModelPatcher(self.model, load_device=self.load_device, offload_device=self.offload_device)
+
+    def load_model(self):
+        model_management.load_model_gpu(self.patcher)
+        return self.patcher
+
+    def __call__(self, timesteps: torch.Tensor, t5_embeds: torch.Tensor, **kwargs):
+        self.load_model()
+        timesteps = timesteps.to(device=self.load_device, dtype=torch.int64)
+        t5_embeds = t5_embeds.to(device=self.load_device, dtype=self.dtype)  # type: ignore
+        cond = self.model(timesteps, t5_embeds, **kwargs)
+        return cond.to(self.output_device)
