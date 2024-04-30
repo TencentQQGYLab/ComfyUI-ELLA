@@ -10,7 +10,7 @@
 [ComfyUI](https://github.com/comfyanonymous/ComfyUI)  implementation for [ELLA](https://github.com/TencentQQGYLab/ELLA).
 
 ## :star2: Changelog
-
+- **[2024.4.30]** Add a new node `ELLA Text Encode` to automatically concat ella and clip condition.
 - **[2024.4.24]** Upgraded ELLA Apply method. Better compatibility with the comfyui ecosystem. Refer to the method mentioned in [ComfyUI_ELLA PR #25](https://github.com/ExponentialML/ComfyUI_ELLA/pull/25)
   - **DEPRECATED**: `Apply ELLA` without `simgas` is deprecated and it will be removed in a future version.
 - **[2024.4.22]** Fix unstable quality of image while multi-batch. Add CLIP concat (support lora trigger words now).
@@ -51,6 +51,16 @@ With the upgrade(2024.4.24), some interesting workflow can be implemented, such 
 | ![ella_with_lora](./assets/ella_with_lora.png) | ![ella_with_lora_positive_only](./assets/ella_with_lora_positive_only.png) |
 
 However, there is no guarantee that positive-only will bring better results.
+
+Workflow with [AYS](https://research.nvidia.com/labs/toronto-ai/AlignYourSteps/).
+
+![workflow_ella_ays](./examples/workflow_ella_ays.png)
+
+AYS got with more visual details and better text-alignment, ref to [paper](https://research.nvidia.com/labs/toronto-ai/AlignYourSteps/).
+
+| w/ AYS | w/o AYS |
+| :---: | :---: |
+| ![](./assets/AYS_output.png) | ![](./assets/wo_AYS_output.png) |
 
 And [EMMA](https://github.com/TencentQQGYLab/ELLA/issues/15) is working in progress.
 

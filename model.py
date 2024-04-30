@@ -9,6 +9,7 @@ from safetensors.torch import load_model
 from torch import nn
 
 from .activations import get_activation
+from .utils import remove_weights
 
 
 class AdaLayerNorm(nn.Module):
@@ -133,6 +134,8 @@ class T5TextEmbedder:
 
     def __call__(self, caption, text_input_ids=None, attention_mask=None, max_length=None, **kwargs):
         self.load_model()
+        # remove a1111/comfyui prompt weight, t5 embedder currently does not accept weight
+        caption = remove_weights(caption)
         if max_length is None:
             max_length = self.max_length
 
