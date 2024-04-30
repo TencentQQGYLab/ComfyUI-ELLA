@@ -46,6 +46,18 @@
 #### Outputs
 - **conds**: (CONDITIONING), for `KSamplers`.
 
+### ELLA Text Encode
+> If clip is provided to this node, it will automatically concat ella condition and clip condition.
+#### Inputs
+- **ella**: (ELLA), ELLA model loaded by `Load ELLA Model` node. Need to use `Set ELLA Timesteps` first.
+- **text_encoder**: (T5_TEXT_ENCODER)
+- **text**: (STRING), prompt to encode.
+#### Optional
+- **clip**: (CLIP), clip model to encode text_clip.
+- **text_clip**: (STRING), prompt to encode with clip.
+#### Outputs
+- **conds**: (CONDITIONING), for `KSamplers`.
+
 ### T5 Text Encode #ELLA
 
 #### Inputs

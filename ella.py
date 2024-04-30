@@ -255,6 +255,64 @@ class EllaEncode:
         return (conds,)
 
 
+class EllaTextEncode:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "ella": (ELLA_TYPE,),
+                "text_encoder": ("T5_TEXT_ENCODER",),
+                "text": ("STRING", {"multiline": True, "dynamicPrompts": True}),
+            },
+            "optional": {
+                "clip": ("CLIP", {"default": None}),
+                "text_clip": ("STRING", {"default":"", "multiline": True, "dynamicPrompts": True}),
+            },
+        }
+
+    RETURN_NAMES = ("CONDITIONING", "CLIP CONDITIONING")
+    RETURN_TYPES = ("CONDITIONING", "CONDITIONING")
+    FUNCTION = "encode"
+
+    CATEGORY = "ella/conditioning"
+
+    def encode(self, ella, text_encoder, text, clip=None, text_clip="", **kwargs):
+        text_encoder_model = text_encoder["model"]
+        cond = text_encoder_model(text, max_length=None)
+        embeds = {}
+        embeds[f"{ELLA_EMBEDS_PREFIX}t5_embeds"] = cond
+
+        timesteps = ella.get("timesteps", None)
+        if timesteps is None:
+            raise ValueError("timesteps are required but not provided, use the 'Set ELLA Timesteps' node first.")
+        embeds = {k[ELLA_EMBEDS_PREFIX_LEN:]: v for k, v in embeds.items() if k.startswith(ELLA_EMBEDS_PREFIX)}
+        ella_conds = ella_encode(ella["model"], timesteps, embeds)
+
+        clip_conds = None
+        if clip is None and text_clip:
+            raise ValueError("text_clip needs a clip to encode")
+        if clip is not None:
+            tokens = clip.tokenize(text_clip)
+            cond, pooled = clip.encode_from_tokens(tokens, return_pooled=True)
+            clip_conds = [[cond, {"pooled_output": pooled}]]
+
+        if clip_conds is not None:
+            return (self.concat(ella_conds, clip_conds), clip_conds)
+
+        return (ella_conds, None)
+
+    def concat(self, conditioning_to, conditioning_from):
+        out = []
+        cond_from = conditioning_from[0][0]
+
+        for i in range(len(conditioning_to)):
+            t1 = conditioning_to[i][0]
+            tw = torch.cat((t1, cond_from),1)
+            n = [tw, conditioning_to[i][1].copy()]
+            out.append(n)
+
+        return out
+
 """
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  Loaders
@@ -409,7 +467,10 @@ class SetEllaTimesteps:
                 "scheduler": (samplers.SCHEDULER_NAMES,),
                 "steps": ("INT", {"default": 20, "min": 1, "max": 10000}),
                 "denoise": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 1.0, "step": 0.01}),
-            }
+            },
+            "optional": {
+                "sigmas": ("SIGMAS", {"default": None}),
+            },
         }
 
     RETURN_TYPES = (ELLA_TYPE,)
@@ -417,16 +478,16 @@ class SetEllaTimesteps:
 
     FUNCTION = "set_timesteps"
 
-    def set_timesteps(self, model, ella, scheduler, steps, denoise):
-        total_steps = steps
-        if denoise < 1.0:
-            if denoise <= 0.0:
-                return (torch.FloatTensor([]),)
-            total_steps = int(steps / denoise)
-
+    def set_timesteps(self, model, ella, scheduler, steps, denoise, sigmas=None):
         model_sampling = model.get_model_object("model_sampling")
-        sigmas = samplers.calculate_sigmas(model_sampling, scheduler, total_steps).cpu()
-        timesteps = model_sampling.timestep(sigmas[-(steps + 1) :])
+        if sigmas is None:
+            total_steps = steps
+            if denoise < 1.0:
+                if denoise <= 0.0:
+                    return (torch.FloatTensor([]),)
+                total_steps = int(steps / denoise)
+            sigmas = samplers.calculate_sigmas(model_sampling, scheduler, total_steps).cpu()[-(steps + 1) :]
+        timesteps = model_sampling.timestep(sigmas)
         return ({**ella, "timesteps": timesteps},)
 
 
@@ -440,6 +501,7 @@ NODE_CLASS_MAPPINGS = {
     "EllaApply": EllaApply,
     "EllaEncode": EllaEncode,
     "T5TextEncode #ELLA": T5TextEncode,
+    "EllaTextEncode": EllaTextEncode,
     # Loaders
     "ELLALoader": ELLALoader,
     "T5TextEncoderLoader #ELLA": T5TextEncoderLoader,
@@ -456,6 +518,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "EllaApply": "Apply ELLA",
     "EllaEncode": "ELLA Encode",
     "T5TextEncode #ELLA": "T5 Text Encode #ELLA",
+    "EllaTextEncode": "ELLA Text Encode",
     # Loaders
     "ELLALoader": "Load ELLA Model",
     "T5TextEncoderLoader #ELLA": "Load T5 TextEncoder #ELLA",
