@@ -42,6 +42,10 @@ All legacy workflows was compatible. But it is deprecated and will be removed in
 
 ![workflow_lora](./examples/workflow_lora.png)
 
+With `ELLA Text Encode` node, can simplify the workflow.
+
+![](./examples/workflow_ella_text_encode.png)
+
 With the upgrade(2024.4.24), some interesting workflow can be implemented, such as using ELLA only in positive. As shown below:
 
 ![workflow_lora_positive_ella_only](./examples/workflow_lora_positive_ella_only.png)
