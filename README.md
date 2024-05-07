@@ -119,6 +119,9 @@ ComfyUI/models/ella_encoder/
 ## :mag: Common promblem
 
 - XXX not implemented for 'Half'. See [issue #12](https://github.com/TencentQQGYLab/ComfyUI-ELLA/issues/12#issuecomment-2067994702)
+- AYS + Ella getting dark image generations. See [issue #39](https://github.com/TencentQQGYLab/ComfyUI-ELLA/issues/39#issuecomment-2097354330)
+  - Check if `add_noise` of `SamplerCustom` node is enabled.
+  - Lower the `cfg` of `SamplerCustom` node.
 
 ## :memo: TODO
 
