@@ -1,3 +1,4 @@
+import logging
 from contextlib import suppress
 
 
@@ -58,3 +59,23 @@ def remove_weights(text: str):
     text = escape_important(text)
     parsed_weights = _remove_weights(text)
     return "".join([unescape_important(segment) for segment in parsed_weights])
+
+
+# some model patcher tools
+def _property_setter_patch(cls, name: str, fn) -> None:
+    """readonly property setter patcher"""
+    p = getattr(cls, name)
+    if not isinstance(p, property):
+        raise TypeError(f"{name} is not a property")
+    if p.fset is not None:
+        logging.warning("Property setter already exists, skip patching.")
+        return
+    setattr(cls, name, getattr(cls, name).setter(fn))
+
+
+def _empty_setter(self, val):
+    logging.warning("An empty property setter is called. This is a patch to avoid `AttributeError`.")
+
+
+def patch_device_empty_setter(cls):
+    _property_setter_patch(cls, "device", _empty_setter)

@@ -9,7 +9,7 @@ from safetensors.torch import load_model
 from torch import nn
 
 from .activations import get_activation
-from .utils import remove_weights
+from .utils import patch_device_empty_setter, remove_weights
 
 
 class AdaLayerNorm(nn.Module):
@@ -125,6 +125,7 @@ class T5TextEmbedder:
         from transformers import T5EncoderModel, T5Tokenizer
 
         self.model = T5EncoderModel.from_pretrained(pretrained_path).to(self.dtype)  # type: ignore
+        patch_device_empty_setter(self.model.__class__)
         self.tokenizer = T5Tokenizer.from_pretrained(pretrained_path, legacy=legacy)
         self.patcher = ModelPatcher(self.model, load_device=self.load_device, offload_device=self.offload_device)
 
