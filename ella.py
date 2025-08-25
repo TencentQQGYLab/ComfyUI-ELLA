@@ -29,7 +29,37 @@ else:
     current_paths, _ = folder_paths.folder_names_and_paths["ella_encoder"]
 folder_paths.folder_names_and_paths["ella_encoder"] = (current_paths, folder_paths.supported_pt_extensions)
 
+# === device/dtype alignment helpers ===
+def _infer_float_dtype_from_embeds(d: dict):
+    import torch
+    for v in d.values():
+        if torch.is_tensor(v) and v.is_floating_point():
+            return v.dtype
+        if isinstance(v, (list, tuple)):
+            for t in v:
+                if torch.is_tensor(t) and t.is_floating_point():
+                    return t.dtype
+        if isinstance(v, dict):
+            dt = _infer_float_dtype_from_embeds(v)
+            if dt is not None:
+                return dt
+    return None
 
+def _align_to_model_device_dtype(x, device, dtype):
+    import torch
+    if x is None:
+        return None
+    if torch.is_tensor(x):
+        if x.is_floating_point():
+            return x.to(device=device, dtype=dtype, non_blocking=True)
+        return x.to(device=device, non_blocking=True)
+    if isinstance(x, (list, tuple)):
+        return type(x)(_align_to_model_device_dtype(xx, device, dtype) for xx in x)
+    if isinstance(x, dict):
+        return {k: _align_to_model_device_dtype(v, device, dtype) for k, v in x.items()}
+    return x
+
+# === /helpers ===
 def ella_encode(ella: ELLA, timesteps: torch.Tensor, embeds: dict):
     num_steps = len(timesteps) - 1
     # print(f"creating ELLA conds for {num_steps} timesteps")
@@ -39,7 +69,14 @@ def ella_encode(ella: ELLA, timesteps: torch.Tensor, embeds: dict):
         start = i / num_steps  # Start percentage is calculated based on the index
         end = (i + 1) / num_steps  # End percentage is calculated based on the next index
 
-        cond_ella = ella(timestep, **embeds)
+        # cond_ella = ella(timestep, **embeds)
+        # align dtype/device to ELLA model
+        device = getattr(ella, "output_device", timesteps.device)
+        want_dtype = _infer_float_dtype_from_embeds(embeds) or torch.float16
+        _t = timestep.to(device=device, dtype=want_dtype)
+        _embeds = _align_to_model_device_dtype(embeds, device, want_dtype)
+
+        cond_ella = ella(_t, **_embeds)
 
         cond_ella_dict = {"start_percent": start, "end_percent": end}
         conds.append([cond_ella, cond_ella_dict])
@@ -69,13 +106,24 @@ class EllaProxyUNet:
                 self.embeds[i][k] = CONDCrossAttn(self.embeds[i][k])
 
     def process_cond(self, embeds: Dict[str, CONDCrossAttn], batch_size, **kwargs):
-        return {k: v.process_cond(batch_size, self.ella.output_device, **kwargs).cond for k, v in embeds.items()}
+        # return {k: v.process_cond(batch_size, self.ella.output_device, **kwargs).cond for k, v in embeds.items()}
+        out = {k: v.process_cond(batch_size, self.ella.output_device, **kwargs).cond for k, v in embeds.items()}
+        # align floats to a common dtype inferred from outputs (or fallback fp16)
+        want_dtype = _infer_float_dtype_from_embeds(out) or torch.float16
+        return _align_to_model_device_dtype(out, self.ella.output_device, want_dtype)
 
     def prepare_conds(self):
+
         cond_embeds = self.process_cond(self.embeds[0], 1)
-        cond = self.ella(torch.Tensor([999]), **cond_embeds)
+        want_dtype = _infer_float_dtype_from_embeds(cond_embeds) or torch.float16
+        t999 = torch.tensor([999.0], device=self.ella.output_device, dtype=want_dtype)
+        cond = self.ella(t999, **cond_embeds)
+
         uncond_embeds = self.process_cond(self.embeds[1], 1)
-        uncond = self.ella(torch.Tensor([999]), **uncond_embeds)
+        # same dtype for consistency
+        t999u = t999
+        uncond = self.ella(t999u, **uncond_embeds)
+
         if self.mode == APPLY_MODE_ELLA_ONLY:
             return cond, uncond
         if "clip_embeds" not in cond_embeds or "clip_embeds" not in uncond_embeds:
@@ -94,22 +142,28 @@ class EllaProxyUNet:
         _device = c["c_crossattn"].device
 
         time_aware_encoder_hidden_states = []
-        for i in cond_or_uncond:
+            # get the dtype of the target model from the cond-data of the first group
+            # (process_cond has already aligned device to self.ella.output_device)   
+        for idx, i in enumerate(cond_or_uncond):
             cond_embeds = self.process_cond(self.embeds[i], input_x.size(0) // len(cond_or_uncond))
-            h = self.ella(
-                self.model_sampling.timestep(timestep_[0]),
-                **cond_embeds,
-            )
-            if self.mode == APPLY_MODE_ELLA_ONLY:
-                time_aware_encoder_hidden_states.append(h)
-                continue
-            if "clip_embeds" not in cond_embeds:
-                time_aware_encoder_hidden_states.append(h)
-                continue
-            h = torch.concat([h, cond_embeds["clip_embeds"]], dim=1)
-            time_aware_encoder_hidden_states.append(h)
+            want_dtype = _infer_float_dtype_from_embeds(cond_embeds) or torch.float16
 
-        c["c_crossattn"] = torch.cat(time_aware_encoder_hidden_states, dim=0).to(_device)
+            # timestep from sampler can be on CPU and in fp32 - we will align it
+            t_model = self.model_sampling.timestep(timestep_[0])
+            t_model = t_model.to(device=self.ella.output_device, dtype=want_dtype)
+
+            h = self.ella(t_model, **cond_embeds)
+
+            if self.mode == APPLY_MODE_ELLA_ONLY or "clip_embeds" not in cond_embeds:
+                time_aware_encoder_hidden_states.append(h)
+            else:
+                h = torch.concat([h, cond_embeds["clip_embeds"]], dim=1)
+                time_aware_encoder_hidden_states.append(h)
+
+        # build a batch and move it under the downstream-UNet device
+        hidden = torch.cat(time_aware_encoder_hidden_states, dim=0)
+        c["c_crossattn"] = hidden.to(_device)
+
 
         return apply_model(input_x, timestep_, **c)
 
